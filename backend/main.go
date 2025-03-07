@@ -79,22 +79,24 @@ func addCar(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Car added successfully!"})
 }
 
-// Rent a car
+// Rent a car with pickup & drop-off datetime
 func rentCar(c *gin.Context) {
 	var rental models.Rental
-	if err := json.NewDecoder(c.Request.Body).Decode(&rental); err != nil {
+	if err := c.ShouldBindJSON(&rental); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO rentals (customer_id, car_id, rental_date, return_date, status) VALUES ($1, $2, $3, $4, 'active')",
-		rental.CustomerID, rental.CarID, rental.RentalDate, rental.ReturnDate)
+	// Insert into the rentals table
+	_, err := db.Exec("INSERT INTO rentals (customer_id, car_id, pickup_datetime, dropoff_datetime, status) VALUES ($1, $2, $3, $4, 'active')",
+		rental.CustomerID, rental.CarID, rental.PickupDatetime, rental.DropoffDatetime)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Update car availability
 	_, _ = db.Exec("UPDATE cars SET availability = FALSE WHERE id = $1", rental.CarID)
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Car rented successfully!"})
@@ -103,11 +105,15 @@ func rentCar(c *gin.Context) {
 // Return a car
 func returnCar(c *gin.Context) {
 	id := c.Param("id")
-	_, err := db.Exec("UPDATE rentals SET status = 'returned' WHERE id = $1", id)
+
+	// Set status to returned and update drop-off datetime
+	_, err := db.Exec("UPDATE rentals SET status = 'returned', dropoff_datetime = NOW() WHERE id = $1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Set car availability to true
 	_, _ = db.Exec("UPDATE cars SET availability = TRUE WHERE id = (SELECT car_id FROM rentals WHERE id = $1)", id)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Car returned successfully!"})
@@ -143,6 +149,41 @@ func getCustomers(c *gin.Context) {
 		customers = append(customers, customer)
 	}
 	c.JSON(http.StatusOK, customers)
+}
+
+// Get all rentals
+func getRentals(c *gin.Context) {
+	rows, err := db.Query("SELECT id, customer_id, car_id, pickup_datetime, dropoff_datetime, status FROM rentals")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var rentals []models.Rental
+	for rows.Next() {
+		var rental models.Rental
+		var dropoffDatetime sql.NullString
+
+		// Scan data into variables
+		err := rows.Scan(&rental.ID, &rental.CustomerID, &rental.CarID, &rental.PickupDatetime, &dropoffDatetime, &rental.Status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Convert sql.NullString to *string (set NULL values to nil)
+		if dropoffDatetime.Valid {
+			rental.DropoffDatetime = &dropoffDatetime.String
+		} else {
+			rental.DropoffDatetime = nil
+		}
+
+		// Append formatted rental data
+		rentals = append(rentals, rental)
+	}
+
+	c.JSON(http.StatusOK, rentals)
 }
 
 // Get a single customer by ID
@@ -193,23 +234,98 @@ func deleteCustomer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Customer deleted successfully!"})
 }
 
+// Update an existing customer
+func updateCustomer(c *gin.Context) {
+	id := c.Param("id")
+	var customer models.Customer
+
+	if err := c.ShouldBindJSON(&customer); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := db.Exec("UPDATE customers SET name = $1, email = $2, phone = $3 WHERE id = $4",
+		customer.Name, customer.Email, customer.Phone, id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Customer updated successfully!"})
+}
+
+// Get a single car by ID
+func getCarByID(c *gin.Context) {
+	id := c.Param("id")
+	row := db.QueryRow("SELECT * FROM cars WHERE id = $1", id)
+
+	var car models.Car
+	err := row.Scan(&car.ID, &car.Brand, &car.Model, &car.PricePerDay, &car.Availability)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Car not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, car)
+}
+
+// Update car details
+func updateCar(c *gin.Context) {
+	id := c.Param("id")
+	var car models.Car
+
+	if err := c.ShouldBindJSON(&car); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := db.Exec("UPDATE cars SET brand = $1, model = $2, price_per_day = $3, availability = $4 WHERE id = $5",
+		car.Brand, car.Model, car.PricePerDay, car.Availability, id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Car updated successfully!"})
+}
+
+// Delete a rental record by ID
+func deleteRental(c *gin.Context) {
+	id := c.Param("id")
+
+	_, err := db.Exec("DELETE FROM rentals WHERE id = $1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Rental deleted successfully!"})
+}
+
 func setupRouter() *gin.Engine {
 	router := gin.Default()
 
-	// Car routes
-	router.GET("/cars", getCars)
-	router.POST("/cars", addCar)
-	router.DELETE("/cars/:id", deleteCar)
+	// Customers API
+	router.GET("/customers", getCustomers)          // Get all customers
+	router.GET("/customers/:id", getCustomerByID)   // Get single customer
+	router.POST("/customers", addCustomer)          // Add a new customer
+	router.PUT("/customers/:id", updateCustomer)    // Update customer
+	router.DELETE("/customers/:id", deleteCustomer) // Delete customer
 
-	// Rental routes
-	router.POST("/rent", rentCar)
-	router.PUT("/return/:id", returnCar)
+	// Cars API
+	router.GET("/cars", getCars)          // Get all cars
+	router.GET("/cars/:id", getCarByID)   // Get single car
+	router.POST("/cars", addCar)          // Add a new car
+	router.PUT("/cars/:id", updateCar)    // Update car
+	router.DELETE("/cars/:id", deleteCar) // Delete car
 
-	// Customer routes
-	router.GET("/customers", getCustomers)
-	router.GET("/customers/:id", getCustomerByID)
-	router.POST("/customers", addCustomer)
-	router.DELETE("/customers/:id", deleteCustomer)
+	// Rentals API
+	router.GET("/rentals", getRentals)          // Get all rentals
+	router.POST("/rent", rentCar)               // Rent a car
+	router.PUT("/return/:id", returnCar)        // Return a rented car
+	router.DELETE("/rentals/:id", deleteRental) // Delete rental record
 
 	return router
 }
