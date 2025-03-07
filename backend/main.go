@@ -1,6 +1,7 @@
 package main
 
 import (
+	"car-rental/models"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -48,9 +49,9 @@ func getCars(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var cars []Car
+	var cars []models.Car
 	for rows.Next() {
-		var car Car
+		var car models.Car
 		if err := rows.Scan(&car.ID, &car.Brand, &car.Model, &car.PricePerDay, &car.Availability); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -62,7 +63,7 @@ func getCars(c *gin.Context) {
 
 // Add a new car
 func addCar(c *gin.Context) {
-	var car Car
+	var car models.Car
 	if err := json.NewDecoder(c.Request.Body).Decode(&car); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -80,7 +81,7 @@ func addCar(c *gin.Context) {
 
 // Rent a car
 func rentCar(c *gin.Context) {
-	var rental Rental
+	var rental models.Rental
 	if err := json.NewDecoder(c.Request.Body).Decode(&rental); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -132,9 +133,9 @@ func getCustomers(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var customers []Customer
+	var customers []models.Customer
 	for rows.Next() {
-		var customer Customer
+		var customer models.Customer
 		if err := rows.Scan(&customer.ID, &customer.Name, &customer.Email, &customer.Phone); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -149,7 +150,7 @@ func getCustomerByID(c *gin.Context) {
 	id := c.Param("id")
 	row := db.QueryRow("SELECT * FROM customers WHERE id = $1", id)
 
-	var customer Customer
+	var customer models.Customer
 	err := row.Scan(&customer.ID, &customer.Name, &customer.Email, &customer.Phone)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -158,13 +159,15 @@ func getCustomerByID(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 		return
+
 	}
+
 	c.JSON(http.StatusOK, customer)
 }
 
 // Add a new customer
 func addCustomer(c *gin.Context) {
-	var customer Customer
+	var customer models.Customer
 	if err := c.ShouldBindJSON(&customer); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
