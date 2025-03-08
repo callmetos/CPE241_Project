@@ -80,6 +80,7 @@ func addCar(c *gin.Context) {
 }
 
 // Rent a car with pickup & drop-off datetime
+// Rent a car (Create a new rental record)
 func rentCar(c *gin.Context) {
 	var rental models.Rental
 	if err := c.ShouldBindJSON(&rental); err != nil {
@@ -87,16 +88,21 @@ func rentCar(c *gin.Context) {
 		return
 	}
 
-	// Insert into the rentals table
-	_, err := db.Exec("INSERT INTO rentals (customer_id, car_id, pickup_datetime, dropoff_datetime, status) VALUES ($1, $2, $3, $4, 'active')",
-		rental.CustomerID, rental.CarID, rental.PickupDatetime, rental.DropoffDatetime)
+	// Ensure rental_date is set
+	if rental.RentalDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rental_date is required"})
+		return
+	}
+
+	_, err := db.Exec("INSERT INTO rentals (customer_id, car_id, rental_date, pickup_datetime, dropoff_datetime, status) VALUES ($1, $2, $3, $4, $5, $6)",
+		rental.CustomerID, rental.CarID, rental.RentalDate, rental.PickupDatetime, rental.DropoffDatetime, rental.Status)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Update car availability
+	// Mark the car as unavailable
 	_, _ = db.Exec("UPDATE cars SET availability = FALSE WHERE id = $1", rental.CarID)
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Car rented successfully!"})
