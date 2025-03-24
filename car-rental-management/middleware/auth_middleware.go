@@ -16,7 +16,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			log.Println("❌ Missing Authorization header")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -24,7 +24,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			log.Println("❌ Invalid token format:", authHeader)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -36,16 +36,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			return []byte(config.JwtSecret), nil
 		})
 
-		if err != nil {
-			log.Println("❌ Token parsing error:", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})
-			c.Abort()
-			return
-		}
-
-		if !token.Valid {
-			log.Println("❌ Invalid token")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		if err != nil || !token.Valid {
+			log.Println("❌ Token error:", err)
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -56,7 +49,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if !emailOk || !roleOk {
 			log.Println("❌ Missing claims in token")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -74,7 +67,7 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		userRole, exists := c.Get("user_role")
 		if !exists {
 			log.Println("❌ No user role found in context")
-			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: No role assigned"})
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -82,7 +75,7 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		role, ok := userRole.(string)
 		if !ok {
 			log.Println("❌ User role is not a string")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error: Invalid role type"})
+			c.HTML(http.StatusForbidden, "403.html", nil)
 			c.Abort()
 			return
 		}
@@ -106,7 +99,7 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		}
 
 		log.Printf("❌ Access denied: User role %s not in allowed roles %v", role, allowedRoles)
-		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden: Insufficient permissions"})
+		c.HTML(http.StatusForbidden, "403.html", nil)
 		c.Abort()
 	}
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../api';
+import { login } from '../api'; // Named import
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -10,11 +10,10 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      const response = await login(email, password);
+      const response = await login(email, password); // Login logic
       const token = response.data.token;
-      localStorage.setItem('token', token);  // Store the JWT token
+      localStorage.setItem('token', token);  // Store token
       navigate('/dashboard');  // Redirect to the dashboard
     } catch (err) {
       setError('Invalid credentials');

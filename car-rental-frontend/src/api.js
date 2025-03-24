@@ -1,15 +1,14 @@
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:8080/api";
-
+// Create an Axios instance to handle API requests
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: "http://localhost:8080/api", // Your backend API URL
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
 });
 
-// Handle JWT Token storage in localStorage (for authentication)
+// Set JWT token in the request header for authentication
 export const setAuthToken = (token) => {
   if (token) {
     api.defaults.headers['Authorization'] = `Bearer ${token}`;
@@ -18,19 +17,19 @@ export const setAuthToken = (token) => {
   }
 };
 
-// Register employee (for the frontend registration form)
+// Register an employee
 export const register = (name, email, password, role) => {
   return api.post('/register', { name, email, password, role });
 };
 
-// Login employee (for the frontend login form)
+// Login an employee and store token
 export const login = (email, password) => {
   return api.post('/login', { email, password });
 };
 
-// Fetch available cars
+// Get the list of cars
 export const getCars = () => {
   return api.get('/cars');
 };
 
-export default api;
+export default api; // Optionally export api instance if you need to use it elsewhere

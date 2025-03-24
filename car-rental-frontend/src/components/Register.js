@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { register } from '../api';
+import { register } from '../api'; // Named import
 import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
@@ -14,8 +14,8 @@ const Register = () => {
     e.preventDefault();
 
     try {
-      await register(name, email, password, role);
-      navigate('/login');  // Redirect to login after successful registration
+      await register(name, email, password, role); // Register logic
+      navigate('/login');  // Redirect to login page after successful registration
     } catch (err) {
       setError('Registration failed');
     }

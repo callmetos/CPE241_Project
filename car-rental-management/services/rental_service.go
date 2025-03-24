@@ -40,3 +40,34 @@ func GetRentals() ([]models.Rental, error) {
 	log.Printf("✅ Rentals fetched successfully in %v ms\n", time.Since(start).Milliseconds())
 	return rentals, nil
 }
+
+// UpdateRental updates rental details
+func UpdateRental(rental models.Rental) error {
+	log.Println("🔄 Updating rental:", rental.ID)
+
+	_, err := config.DB.NamedExec(`
+		UPDATE rentals SET customer_id=:customer_id, car_id=:car_id, rental_date=:rental_date, pickup_datetime=:pickup_datetime, dropoff_datetime=:dropoff_datetime, pickup_location=:pickup_location, status=:status
+		WHERE id=:id`, rental)
+
+	if err != nil {
+		log.Println("❌ Error updating rental:", err)
+		return err
+	}
+
+	log.Println("✅ Rental updated successfully!")
+	return nil
+}
+
+// DeleteRental removes a rental from the database
+func DeleteRental(rentalID int) error {
+	log.Println("🗑 Deleting rental with ID:", rentalID)
+
+	_, err := config.DB.Exec("DELETE FROM rentals WHERE id=$1", rentalID)
+	if err != nil {
+		log.Println("❌ Error deleting rental:", err)
+		return err
+	}
+
+	log.Println("✅ Rental deleted successfully!")
+	return nil
+}

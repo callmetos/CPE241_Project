@@ -1,13 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
+import App from './App';  // Make sure this imports the App component correctly
 import { BrowserRouter as Router } from 'react-router-dom';
 
-// Create root and render the app inside Router
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <Router>
-    <App />
+    <App />  {/* Make sure App is rendered here */}
   </Router>
 );

@@ -36,18 +36,24 @@ func SetupRouter() *gin.Engine {
 		// Registration and Login routes
 		api.POST("/register", controllers.RegisterEmployee)
 		api.POST("/login", controllers.LoginEmployee)
+		// In routes.go, ensure the cars endpoint doesn't have authentication middleware if public
+		api.GET("/cars", controllers.GetCars)
 
 		// Protected routes requiring JWT authentication
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
 			// Cars Management
-			protected.GET("/cars", controllers.GetCars)
+			//protected.GET("/cars", controllers.GetCars)
 			protected.POST("/cars", middleware.RoleMiddleware("manager", "admin"), controllers.AddCar)
+			protected.PUT("/cars", middleware.RoleMiddleware("manager", "admin"), controllers.UpdateCar)
+			protected.DELETE("/cars/:id", middleware.RoleMiddleware("manager", "admin"), controllers.DeleteCar)
 
 			// Rentals Management
 			protected.GET("/rentals", middleware.RoleMiddleware("manager", "admin"), controllers.GetRentals)
 			protected.POST("/rentals", middleware.RoleMiddleware("customer", "manager", "admin"), controllers.CreateRental)
+			protected.PUT("/rentals", middleware.RoleMiddleware("manager", "admin"), controllers.UpdateRental)
+			protected.DELETE("/rentals/:id", middleware.RoleMiddleware("manager", "admin"), controllers.DeleteRental)
 
 			// Payments Management
 			protected.GET("/payments", middleware.RoleMiddleware("manager", "admin"), controllers.GetPayments)
@@ -58,14 +64,17 @@ func SetupRouter() *gin.Engine {
 
 			// Customer Management
 			protected.GET("/customers", middleware.RoleMiddleware("manager", "admin"), controllers.GetCustomers)
+			protected.PUT("/customers", middleware.RoleMiddleware("manager", "admin"), controllers.UpdateCustomer)
+			protected.DELETE("/customers/:id", middleware.RoleMiddleware("manager", "admin"), controllers.DeleteCustomer)
+
+			protected.GET("/dashboard", middleware.RoleMiddleware("admin", "manager"), controllers.GetDashboard)
+
 		}
 	}
 
 	// Handle 404 Not Found
 	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Endpoint not found",
-		})
+		c.HTML(http.StatusNotFound, "404.html", nil)
 	})
 
 	log.Println("✅ Routes configured successfully!")

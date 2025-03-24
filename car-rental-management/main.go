@@ -12,6 +12,8 @@ func main() {
 	// Set up the routes
 	r := routes.SetupRouter()
 
+	r.LoadHTMLGlob("templates/**/*") // ✅ รองรับทุกโฟลเดอร์ย่อย
+
 	// Run the server on port 8080
 	r.Run(":8080")
 }

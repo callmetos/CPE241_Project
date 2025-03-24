@@ -1,19 +1,28 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom'; // Use Routes and Route without Router
+import { Routes, Route } from 'react-router-dom';
+import CarList from './components/CarList';
 import Login from './components/Login';
 import Register from './components/Register';
-import CarList from './components/CarList';
 import Dashboard from './components/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
   return (
-    <div>
-      <h1>Car Rental Management</h1>
+    <div className="App">
       <Routes>
-        <Route path="/" element={<CarList />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<CarList />} /> {/* Home page (Car list) */}
+        <Route path="/login" element={<Login />} /> {/* Login page */}
+        <Route path="/register" element={<Register />} /> {/* Register page */}
+        
+        {/* Protected route for Dashboard */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </div>
   );
