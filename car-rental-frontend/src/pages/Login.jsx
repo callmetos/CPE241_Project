@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/authService'; // Assuming you have authService for handling API
+import { login } from '../services/authService';
+import './Login.css'; // Make sure to import your CSS
+import loginlogo from '../assets/logo.png'; // Replace with your actual logo pathX
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,35 +19,50 @@ const Login = () => {
     }
 
     try {
-      const token = await login(email, password); // Send to backend to get JWT token
-      localStorage.setItem('jwt_token', token); // Store JWT token in localStorage
-      navigate('/car-rental'); // Redirect to the car rental page after successful login
+      const token = await login(email, password);
+      localStorage.setItem('jwt_token', token);
+      navigate('/car-rental');
     } catch (err) {
       setError('Invalid email or password');
     }
   };
 
   return (
-    <div className="login-container">
-      <h2>Log In</h2>
-      {error && <p>{error}</p>}
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button type="submit">Log In</button>
-      </form>
-      <p>Don't have an account? <a href="/signup">Sign Up</a></p>
-    </div>
+    <>
+      <div className="background-image"></div>
+      <div className="login-container">
+        <img src={loginlogo} alt="GannatRat a Car Logo" className="loginlogo" />
+        
+        {error && <p className="error">{error}</p>}
+        
+        <form onSubmit={handleLogin}>
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          
+          <div className="forgot-password">
+            <a href="/forgot-password">forgot password</a>
+          </div>
+          
+          <button type="submit">Log in</button>
+        </form>
+        <p>Don't have an account? <a href="/signup">Sign Up</a></p>
+      </div>
+    </>
   );
 };
 
