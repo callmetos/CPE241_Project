@@ -1,14 +1,21 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem('jwt_token');  // Check if the JWT token exists in localStorage
+  const { isAuthenticated, loading } = useContext(AuthContext);
+  const location = useLocation();
 
-  if (!token) {
-    return <Navigate to="/login" />; // If no token, redirect to login page
+  if (loading) {
+    return <div>Loading Authentication...</div>; // Or a proper spinner
   }
 
-  return children;  // Otherwise, render the protected component (e.g., CarRental)
+  if (!isAuthenticated) {
+    console.log("PrivateRoute: Not authenticated, redirecting to login from", location.pathname);
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 };
 
 export default PrivateRoute;

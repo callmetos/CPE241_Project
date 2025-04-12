@@ -1,32 +1,41 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import SignUp from './pages/Signup';
-import Login from './pages/Login';
-import CarRental from './pages/CarRental';
-import PrivateRoute from './components/PrivateRoute';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Profile from './pages/Profile'; // Import Profile page
-import RentalHistory from './pages/RentalHistory'; // Import Rental History page
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
+// Import Pages
+import Home from './pages/Home';
+import SignUp from './pages/SignUp';
+import Login from './pages/Login';
+import Logout from './pages/Logout';
+import CarRental from './pages/CarRental';
+import Profile from './pages/Profile';
+import RentalHistory from './pages/RentalHistory';
+
+// Import Components
+import Navbar from './components/Navbar'; // Navbar แสดงทุกหน้า
+import Footer from './components/Footer';
+import PrivateRoute from './components/PrivateRoute';
+
+// App component หลัก Render Navbar, Routes, Footer ตรงๆ
 const App = () => {
   return (
     <Router>
-      <Navbar />
-      <div className="main-content">
+      <Navbar /> {/* Navbar แสดงนอก Routes */}
+      <div className="main-content" style={{ minHeight: 'calc(100vh - 150px)', padding: '20px' }}>
         <Routes>
+          {/* Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/car-rental" element={<PrivateRoute><CarRental /></PrivateRoute>} />
-          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} /> {/* Add Profile route */}
-          <Route path="/rental-history" element={<PrivateRoute><RentalHistory /></PrivateRoute>} /> {/* Add Rental History route */}
+          <Route path="/logout" element={<Logout />} />
+          <Route path="/rental/:rentalType" element={<PrivateRoute><CarRental /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/rental-history" element={<PrivateRoute><RentalHistory /></PrivateRoute>} />
+          <Route path="*" element={<div style={{ textAlign: 'center', marginTop: '50px' }}><h2>404 Not Found</h2><p>The page you requested does not exist.</p><Link to="/">Go back to Home</Link></div>} />
         </Routes>
       </div>
-      <Footer />
+      <Footer /> {/* Footer แสดงนอก Routes */}
     </Router>
   );
 };
 
-export default App;
+export default App; // Ensure default export

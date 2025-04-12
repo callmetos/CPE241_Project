@@ -1,66 +1,50 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../services/authService';
-import './Login.css'; // Make sure to import your CSS
-import loginlogo from '../assets/logo.png'; // Replace with your actual logo pathX
+// src/pages/Login.jsx
+import React, { useState, useContext } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { login as loginService } from '../services/authService';
+import { AuthContext } from '../context/AuthContext';
+import './Login.css'; // Keep CSS import
+// --- No logo import needed here ---
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+  // ... (state and handlers same as previous 'final' version) ...
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { login: loginContext } = useContext(AuthContext);
+    const from = location.state?.from?.pathname || "/"; // Default to home
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-
-    if (!email || !password) {
-      setError('Email and Password are required');
-      return;
-    }
-
-    try {
-      const token = await login(email, password);
-      localStorage.setItem('jwt_token', token);
-      navigate('/car-rental');
-    } catch (err) {
-      setError('Invalid email or password');
-    }
-  };
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setError(''); setIsSubmitting(true);
+        if (!email || !password) { setError('Email and Password are required'); setIsSubmitting(false); return; }
+        try {
+            const token = await loginService(email, password);
+            await loginContext(token);
+            navigate(from, { replace: true });
+        } catch (err) { setError(err.message || 'Login failed.'); }
+        finally { setIsSubmitting(false); }
+    };
 
   return (
     <>
       <div className="background-image"></div>
+      {/* --- NO Standalone Logo Header Here --- */}
       <div className="login-container">
-        <img src={loginlogo} alt="GannatRat a Car Logo" className="loginlogo" />
-        
+        <h2>Customer Login</h2>
         {error && <p className="error">{error}</p>}
-        
         <form onSubmit={handleLogin}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          
-          <div className="forgot-password">
-            <a href="/forgot-password">forgot password</a>
-          </div>
-          
-          <button type="submit">Log in</button>
+           <label htmlFor="email">Email</label>
+           <input id="email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isSubmitting} required />
+           <label htmlFor="password">Password</label>
+           <input id="password" type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} required/>
+           <div className="forgot-password"><Link to="/forgot-password">forgot password?</Link></div>
+           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Logging in...' : 'Log in'}</button>
         </form>
-        <p>Don't have an account? <a href="/signup">Sign Up</a></p>
+        <p>Don't have an account? <Link to="/signup">Sign Up</Link></p>
       </div>
     </>
   );

@@ -1,19 +1,18 @@
-import React from 'react';
+import React, { useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 const Logout = () => {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
 
-  const handleLogout = () => {
-    localStorage.removeItem('jwt_token'); // Remove token from localStorage
-    navigate('/login'); // Redirect to login page
-  };
+  useEffect(() => {
+    logout();
+    // Redirect to login page after logging out
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
 
-  return (
-    <div>
-      <button onClick={handleLogout}>Logout</button>
-    </div>
-  );
+  return <p>Logging out...</p>; // Or null, or a spinner
 };
 
 export default Logout;

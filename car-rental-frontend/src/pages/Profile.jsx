@@ -1,42 +1,38 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/Profile.jsx
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchUserProfile } from '../services/apiService';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
 const Profile = () => {
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const token = localStorage.getItem('jwt_token');
-      if (!token) return;
-
-      try {
-        const response = await fetch('http://localhost:8080/api/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        setUser(data);
-      } catch (err) {
-        setError('Failed to fetch user profile');
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
+  const {
+    data: user,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: fetchUserProfile,
+    staleTime: 1000 * 60 * 15, // Cache profile for 15 minutes
+    retry: 1,
+  });
 
   return (
     <div>
       <h2>User Profile</h2>
-      {error && <p>{error}</p>}
-      {user ? (
+      {isLoading && <LoadingSpinner />}
+      <ErrorMessage message={isError ? error?.message : null} />
+
+      {user && !isLoading && !isError && (
         <div>
-          <h3>{user.name}</h3>
-          <p>Email: {user.email}</p>
-          <p>Joined on: {user.createdAt}</p>
+          <p><strong>ID:</strong> {user.id}</p>
+          <p><strong>Name:</strong> {user.name}</p>
+          <p><strong>Email:</strong> {user.email}</p>
+          <p><strong>Phone:</strong> {user.phone || 'Not provided'}</p>
+          <p><strong>Joined on:</strong> {new Date(user.created_at).toLocaleDateString()}</p>
+          {/* TODO: Add Edit Profile Button/Functionality */}
         </div>
-      ) : (
-        <p>Loading profile...</p>
       )}
     </div>
   );
