@@ -30,9 +30,8 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: 40vh;
   padding: 30px;
-  padding-top: 80px; /* เพิ่ม Padding ด้านบนเผื่อ Navbar */
   position: relative;
   z-index: 2;
   box-sizing: border-box;

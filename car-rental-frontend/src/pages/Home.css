@@ -1,0 +1,74 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+   
+.background-home {
+    background-image: url('../assets/hombg.png'); /* Make sure path is correct */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 50vh;
+    width: 100vw;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.overlay-content {
+    z-index: 2;          
+    position: relative;  
+    padding-top: 100px;
+    text-align: center;
+}
+.home-container {
+    text-align: center;
+    height: 100vh;
+
+}
+
+.service-options {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 400px;
+    gap: 20px;
+}
+  
+.service-option {
+    border: 1px solid #ddd;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+    width: 30%;
+    min-width: 250px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.service-option p {
+    margin-top: 15px;
+}
+  
+.rental-button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    z-index: 3;
+}
+  
+.rental-button:hover {
+    background-color: #0056b3;
+}
+  
