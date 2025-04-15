@@ -1,61 +1,95 @@
+
 html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
+    box-sizing: border-box;
     overflow-x: hidden;
   }
-   
-.background-home {
-    background-image: url('../assets/hombg.png'); /* Make sure path is correct */
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .home-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Hero Section */
+  .hero-section {
+    width: 100%; /* was 100vw */
+    height: 50vh;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .background-home {
+    background-image: url('../assets/hombg.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 50vh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
+    margin-top: -80px;
+    position: relative;
+  }
+  
+  .overlay-content {
     position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 0;
-}
-
-.overlay-content {
-    z-index: 2;          
-    position: relative;  
-    padding-top: 100px;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: black;
     text-align: center;
-}
-.home-container {
-    text-align: center;
-    height: 100vh;
-
-}
-
-.service-options {
+    z-index: 1;
+    font-size: 1.25rem;
+  }
+  
+  /* Rental Cards Section */
+  .main-content {
+    background-color: #DDE6ED;
+    padding-bottom: 20px;
+    width: 100%; /* was 100vw */
+  }
+  
+  .service-options {
     display: flex;
     justify-content: space-around;
     flex-wrap: wrap;
-    margin-top: 400px;
     gap: 20px;
-}
+    width: 100%;
+    margin: 0 auto;
+  }
   
-.service-option {
-    border: 1px solid #ddd;
+  .service-option {
     padding: 25px;
     border-radius: 10px;
     text-align: center;
     width: 30%;
     min-width: 250px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-}
-
-.service-option p {
-    margin-top: 15px;
-}
+  }
   
-.rental-button {
+  .service-img {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 30px;
+    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .service-option p {
+    margin-top: 15px;
+  }
+  
+  .rental-button {
     background-color: #007bff;
     color: white;
     padding: 10px 20px;
@@ -65,10 +99,66 @@ html, body {
     margin-top: 20px;
     font-size: 1rem;
     transition: background-color 0.3s ease;
-    z-index: 3;
-}
+  }
   
-.rental-button:hover {
+  .rental-button:hover {
     background-color: #0056b3;
-}
+  }
+  
+  /* More Content Section */
+  .below-hero-content {
+    background-color: #e8dfdc;
+    padding: 60px 20px;
+    text-align: center;
+    margin-bottom: -20px;
+  }
+  
+  .services {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  
+  .services h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+  
+  .service-description {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .why-choose {
+    font-size: 1.25rem;
+    color: #4e5c77;
+    margin-bottom: 15px;
+  }
+  
+  .features-list {
+    list-style: disc;
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto 30px auto;
+    padding-left: 20px;
+    color: #2c2c2c;
+    line-height: 1.6;
+    font-size: 1.25rem;
+  }
+  
+  .search-button {
+    background-color: #4f9a94;
+    color: white;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 20px;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .search-button:hover {
+    background-color: #3a7d77;
+  }
   

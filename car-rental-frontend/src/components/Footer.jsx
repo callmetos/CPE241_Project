@@ -14,7 +14,8 @@ const Footer = () => {
         color: 'white',
         padding: '20px',
         textAlign: 'center',
-        marginTop: 'auto'
+        marginTop: 'auto',
+        width: '100%'
     };
 
     const linkStyle = {
