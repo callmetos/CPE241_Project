@@ -13,7 +13,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
  */
 export const signup = async (email, name, password) => {
      try {
-        const response = await axios.post(`${API_URL}/customer/register`, { email, name, password });
+        const response = await axios.post(`${API_URL}/auth/customer/register`, { email, name, password });
         return response.data;
       } catch (error) {
         console.error('Signup Service Error:', error.response ? error.response.data : error.message);
@@ -30,7 +30,7 @@ export const signup = async (email, name, password) => {
  */
 export const login = async (email, password) => {
   try {
-    const response = await axios.post(`${API_URL}/customer/login`, { email, password });
+    const response = await axios.post(`${API_URL}/auth/customer/login`, { email, password });
     if (response.data && response.data.token) {
       return response.data.token; // Return only the token
     } else {

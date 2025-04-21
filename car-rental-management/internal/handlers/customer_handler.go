@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq" // Import pq for checking specific DB errors
 )
 
 // --- Staff Handlers ---
@@ -30,7 +31,7 @@ func GetCustomers(c *gin.Context) {
 func GetCustomerByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer ID"})
 		return
 	}
@@ -40,7 +41,7 @@ func GetCustomerByID(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else {
 			log.Printf("❌ Error fetching customer %d: %v", id, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch customer"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch customer details"})
 		}
 		return
 	}
@@ -51,27 +52,42 @@ func GetCustomerByID(c *gin.Context) {
 func UpdateCustomer(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer ID"})
 		return
 	}
-	var customer models.Customer // Staff can update more fields than customer self-update
-	if err := c.ShouldBindJSON(&customer); err != nil {
+
+	var input models.UpdateCustomerByStaffInput // Use the specific input struct for staff
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-	customer.ID = id // Set ID from URL
 
-	updatedCustomer, err := services.UpdateCustomer(customer)
+	updatedCustomer, err := services.UpdateCustomer(id, input) // Pass ID and input struct
 	if err != nil {
 		log.Println("❌ Error updating customer by staff:", err)
+		statusCode := http.StatusInternalServerError
+		errMsg := "Failed to update customer"
+
+		errStr := err.Error()
 		if errors.Is(err, errors.New("customer not found for update")) {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		} else if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "email") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}) // Includes duplicate email error
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update customer"})
+			statusCode = http.StatusNotFound
+			errMsg = errStr
+		} else if errStr == "email already exists for another customer" {
+			statusCode = http.StatusConflict
+			errMsg = errStr
+		} else if strings.Contains(errStr, "invalid") || strings.Contains(errStr, "empty") {
+			statusCode = http.StatusBadRequest
+			errMsg = errStr
+		} else if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" { // Catch potential wrapped unique constraint error
+			statusCode = http.StatusConflict
+			errMsg = "Email already exists for another customer"
+		} else if strings.Contains(errStr, "update succeeded but failed to fetch") {
+			statusCode = http.StatusInternalServerError // Indicate internal issue post-update
+			errMsg = "Update may have succeeded, but failed to retrieve final state."
 		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 	c.JSON(http.StatusOK, updatedCustomer)
@@ -81,20 +97,29 @@ func UpdateCustomer(c *gin.Context) {
 func DeleteCustomer(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer ID"})
 		return
 	}
 	err = services.DeleteCustomer(id)
 	if err != nil {
 		log.Println("❌ Error deleting customer by staff:", err)
+		statusCode := http.StatusInternalServerError
+		errMsg := "Failed to delete customer"
+
+		errStr := err.Error()
 		if errors.Is(err, errors.New("customer not found for deletion")) {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		} else if strings.Contains(err.Error(), "cannot delete customer") { // FK error from service
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete customer"})
+			statusCode = http.StatusNotFound
+			errMsg = errStr
+		} else if errStr == "cannot delete customer: they have associated rentals" {
+			statusCode = http.StatusConflict
+			errMsg = errStr
+		} else if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23503" { // Catch potential wrapped FK error
+			statusCode = http.StatusConflict
+			errMsg = "Cannot delete customer: they have associated rentals or other dependencies"
 		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Customer deleted successfully"})
@@ -105,17 +130,23 @@ func DeleteCustomer(c *gin.Context) {
 func GetMyProfile(c *gin.Context) {
 	customerIDInterface, exists := c.Get("customer_id")
 	if !exists {
+		// This should ideally be caught by CustomerRequired middleware, but double-check
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Customer authentication required"})
 		return
 	}
-	customerID := customerIDInterface.(int)
+	customerID, ok := customerIDInterface.(int)
+	if !ok || customerID <= 0 {
+		log.Printf("🔥 Critical: Invalid customer_id (%v) in context despite passing middleware", customerIDInterface)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authentication token data"})
+		return
+	}
 
 	customer, err := services.GetCustomerByID(customerID) // Use existing service function
 	if err != nil {
 		if errors.Is(err, errors.New("customer not found")) {
 			// This should ideally not happen if the JWT is valid and refers to an existing user
 			log.Printf("🔥 Critical: Customer ID %d from valid JWT not found in DB!", customerID)
-			c.JSON(http.StatusNotFound, gin.H{"error": "Profile data inconsistent"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Profile data inconsistent, user may have been deleted"})
 		} else {
 			log.Printf("❌ Error fetching profile for customer %d: %v", customerID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch profile"})
@@ -131,7 +162,12 @@ func UpdateMyProfile(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Customer authentication required"})
 		return
 	}
-	customerID := customerIDInterface.(int)
+	customerID, ok := customerIDInterface.(int)
+	if !ok || customerID <= 0 {
+		log.Printf("🔥 Critical: Invalid customer_id (%v) in context despite passing middleware", customerIDInterface)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authentication token data"})
+		return
+	}
 
 	var input models.UpdateCustomerProfileInput // Use specific input struct for profile update
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -143,13 +179,25 @@ func UpdateMyProfile(c *gin.Context) {
 	updatedCustomer, err := services.UpdateCustomerProfile(customerID, input)
 	if err != nil {
 		log.Printf("❌ Error updating profile for customer %d: %v", customerID, err)
-		if errors.Is(err, errors.New("customer not found for profile update")) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"}) // Should not happen
-		} else if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "empty") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
+		statusCode := http.StatusInternalServerError
+		errMsg := "Failed to update profile"
+
+		errStr := err.Error()
+		// The service returns specific errors for not found or validation issues
+		if errors.Is(err, errors.New("customer not found for profile update (or possibly deleted)")) {
+			statusCode = http.StatusNotFound // Or maybe Unauthorized if they were deleted?
+			errMsg = "Profile not found or user deleted"
+		} else if strings.Contains(errStr, "invalid") || strings.Contains(errStr, "empty") {
+			statusCode = http.StatusBadRequest
+			errMsg = errStr
+		} else if strings.Contains(errStr, "profile update succeeded but failed to retrieve") {
+			// Update likely worked, but can't confirm full state. Return success but maybe with a warning?
+			// Or return 500 as something went wrong post-update. Let's return 500.
+			statusCode = http.StatusInternalServerError
+			errMsg = "Profile update may have succeeded, but failed to retrieve final state."
 		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 	c.JSON(http.StatusOK, updatedCustomer)

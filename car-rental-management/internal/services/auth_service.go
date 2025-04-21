@@ -6,20 +6,15 @@ import (
 	"car-rental-management/internal/utils" // Import utils
 	"database/sql"
 	"errors"
+	"fmt" // Import fmt for error wrapping
 	"log"
-	"regexp"
+
+	// Removed regexp import
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	// Removed bcrypt import, using utils now
 )
-
-var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-
-func isValidEmail(email string) bool {
-	return emailRegex.MatchString(email)
-}
 
 // --- Employee Auth ---
 
@@ -28,7 +23,8 @@ func RegisterEmployee(employee models.Employee) error {
 	if strings.TrimSpace(employee.Name) == "" {
 		return errors.New("employee name cannot be empty")
 	}
-	if !isValidEmail(employee.Email) {
+	// Use validation util
+	if !utils.IsValidEmail(employee.Email) {
 		return errors.New("invalid email format")
 	}
 	if len(employee.Password) < 6 {
@@ -40,7 +36,8 @@ func RegisterEmployee(employee models.Employee) error {
 	err := config.DB.Get(&count, "SELECT COUNT(*) FROM employees WHERE email=$1", employee.Email)
 	if err != nil {
 		log.Printf("❌ Database error checking employee email %s: %v", employee.Email, err)
-		return errors.New("database error checking email")
+		// Wrap the error
+		return fmt.Errorf("database error checking email: %w", err)
 	}
 	if count > 0 {
 		return errors.New("employee email already exists")
@@ -50,6 +47,7 @@ func RegisterEmployee(employee models.Employee) error {
 	hashedPassword, err := utils.HashPassword(employee.Password)
 	if err != nil {
 		log.Println("❌ Error hashing employee password:", err)
+		// Consider wrapping if HashPassword returns specific error types
 		return errors.New("failed to secure password")
 	}
 	employee.Password = hashedPassword
@@ -59,8 +57,8 @@ func RegisterEmployee(employee models.Employee) error {
 	_, err = config.DB.Exec(query, employee.Name, employee.Email, employee.Password, employee.Role)
 	if err != nil {
 		log.Println("❌ Error registering employee:", err)
-		// Check for specific DB errors like unique constraint violation? (already checked above)
-		return errors.New("failed to register employee")
+		// Wrap the error
+		return fmt.Errorf("failed to register employee: %w", err)
 	}
 
 	log.Printf("✅ Employee registered successfully: %s", employee.Email)
@@ -70,19 +68,21 @@ func RegisterEmployee(employee models.Employee) error {
 func AuthenticateEmployee(email, password string) (string, error) {
 	var employee models.Employee
 	query := "SELECT id, name, email, password, role FROM employees WHERE email=$1"
-	err := config.DB.QueryRowx(query, email).StructScan(&employee)
+	// Use Get instead of QueryRowx/StructScan for simpler error checking
+	err := config.DB.Get(&employee, query, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Println("❌ Employee email not found:", email)
-		} else {
-			log.Println("❌ Error fetching employee:", err)
+			log.Printf("❌ Employee email not found: %s", email)
+			return "", errors.New("invalid email or password") // Keep error generic
 		}
-		return "", errors.New("invalid email or password") // Keep error generic for security
+		log.Printf("❌ Error fetching employee %s: %v", email, err)
+		// Wrap the database error
+		return "", fmt.Errorf("error fetching employee data: %w", err)
 	}
 
 	// Check password using utility function
 	if !utils.CheckPasswordHash(password, employee.Password) {
-		log.Println("❌ Employee password mismatch for:", email)
+		log.Printf("❌ Employee password mismatch for: %s", email)
 		return "", errors.New("invalid email or password") // Keep error generic
 	}
 
@@ -90,7 +90,8 @@ func AuthenticateEmployee(email, password string) (string, error) {
 	token, err := generateEmployeeToken(employee.ID, employee.Email, employee.Role)
 	if err != nil {
 		log.Println("❌ Error generating employee token:", err)
-		return "", errors.New("authentication failed") // Generic error
+		// Don't wrap internal token generation error usually, return generic auth failure
+		return "", errors.New("authentication failed")
 	}
 
 	log.Printf("✅ Authentication successful for employee: %s", email)
@@ -99,74 +100,84 @@ func AuthenticateEmployee(email, password string) (string, error) {
 
 // --- Customer Auth ---
 
-func RegisterCustomer(customer models.Customer) (models.Customer, error) {
-	log.Println("🔍 Validating customer data for registration:", customer.Email)
-	if strings.TrimSpace(customer.Name) == "" {
+// RegisterCustomer now accepts RegisterCustomerInput
+func RegisterCustomer(input models.RegisterCustomerInput) (models.Customer, error) {
+	log.Println("🔍 Validating customer data for registration:", input.Email)
+	// Validation performed via binding tags in the handler mostly
+	// Re-check here for service-level assurance if needed, but redundant if binding is robust
+	if strings.TrimSpace(input.Name) == "" {
 		return models.Customer{}, errors.New("customer name cannot be empty")
 	}
-	if !isValidEmail(customer.Email) {
+	if !utils.IsValidEmail(input.Email) {
 		return models.Customer{}, errors.New("invalid email format")
 	}
-	if len(customer.Password) < 6 {
+	if len(input.Password) < 6 {
 		return models.Customer{}, errors.New("password must be at least 6 characters long")
 	}
 
+	// Check existing email
 	var count int
-	err := config.DB.Get(&count, "SELECT COUNT(*) FROM customers WHERE email=$1", customer.Email)
+	err := config.DB.Get(&count, "SELECT COUNT(*) FROM customers WHERE email=$1", input.Email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) { // Should return 0 if no rows
 		log.Println("❌ Error checking existing customer email:", err)
-		return models.Customer{}, errors.New("database error checking email existence")
+		return models.Customer{}, fmt.Errorf("database error checking email existence: %w", err)
 	}
 	if count > 0 {
-		log.Printf("⚠️ Customer email already exists: %s", customer.Email)
+		log.Printf("⚠️ Customer email already exists: %s", input.Email)
 		return models.Customer{}, errors.New("email already exists")
 	}
 
-	hashedPassword, err := utils.HashPassword(customer.Password)
+	// Hash password
+	hashedPassword, err := utils.HashPassword(input.Password)
 	if err != nil {
 		log.Println("❌ Error hashing customer password:", err)
 		return models.Customer{}, errors.New("failed to secure password")
 	}
-	customer.Password = hashedPassword
 
 	log.Println("✅ Customer validation passed. Inserting customer...")
+	// Create the customer model to insert
+	customer := models.Customer{
+		Name:     input.Name,
+		Email:    input.Email,
+		Phone:    input.Phone,
+		Password: hashedPassword, // Use the hash
+	}
+
 	query := `INSERT INTO customers (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
-	var newID int
-	var createdAt, updatedAt time.Time // Assuming time.Time in model
-	err = config.DB.QueryRow(query, customer.Name, customer.Email, customer.Phone, customer.Password).Scan(&newID, &createdAt, &updatedAt)
+	err = config.DB.QueryRow(query, customer.Name, customer.Email, customer.Phone, customer.Password).Scan(&customer.ID, &customer.CreatedAt, &customer.UpdatedAt)
 	if err != nil {
 		log.Println("❌ Error inserting customer:", err)
 		// Check for unique constraint error just in case of race condition?
-		return models.Customer{}, errors.New("failed to register customer")
+		return models.Customer{}, fmt.Errorf("failed to register customer: %w", err)
 	}
 
-	customer.ID = newID
-	customer.CreatedAt = createdAt
-	customer.UpdatedAt = updatedAt
-	customer.Password = "" // Clear password before returning
-	log.Printf("✅ Customer registered successfully with ID: %d", newID)
+	// Important: Clear password hash before returning the struct
+	customer.Password = ""
+	log.Printf("✅ Customer registered successfully with ID: %d", customer.ID)
 	return customer, nil
 }
 
 func AuthenticateCustomer(email, password string) (string, error) {
 	var customer models.Customer
-	// Select all fields EXCEPT password hash to avoid accidentally returning it
+	// Select required fields including password hash for checking
 	query := "SELECT id, name, email, password, phone, created_at, updated_at FROM customers WHERE email=$1"
-	err := config.DB.QueryRowx(query, email).StructScan(&customer)
+	err := config.DB.Get(&customer, query, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Println("❌ Customer email not found:", email)
-		} else {
-			log.Println("❌ Error fetching customer:", err)
+			log.Printf("❌ Customer email not found: %s", email)
+			return "", errors.New("invalid email or password") // Generic error
 		}
-		return "", errors.New("invalid email or password") // Generic error
+		log.Printf("❌ Error fetching customer %s: %v", email, err)
+		return "", fmt.Errorf("error fetching customer data: %w", err)
 	}
 
+	// Check password
 	if !utils.CheckPasswordHash(password, customer.Password) {
-		log.Println("❌ Customer password mismatch for:", email)
+		log.Printf("❌ Customer password mismatch for: %s", email)
 		return "", errors.New("invalid email or password") // Generic error
 	}
 
+	// Generate token
 	token, err := generateCustomerToken(customer.ID, customer.Email)
 	if err != nil {
 		log.Println("❌ Error generating customer token:", err)
@@ -177,10 +188,10 @@ func AuthenticateCustomer(email, password string) (string, error) {
 	return token, nil
 }
 
-// --- Token Generation ---
+// --- Token Generation (Keep as is, logic is specific) ---
 
 func generateEmployeeToken(employeeID int, email, role string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(24 * time.Hour) // Consider making expiration configurable
 	claims := jwt.MapClaims{
 		"user_type":   "employee", // Add user type claim
 		"employee_id": employeeID,
@@ -188,18 +199,19 @@ func generateEmployeeToken(employeeID int, email, role string) (string, error) {
 		"role":        role,
 		"exp":         expirationTime.Unix(),
 		"iss":         "car-rental-api", // Example issuer
+		"iat":         time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(config.JwtSecret)) // Use the same secret for now
+	tokenString, err := token.SignedString([]byte(config.JwtSecret))
 	if err != nil {
 		log.Println("❌ Error signing employee token:", err)
-		return "", err
+		return "", fmt.Errorf("failed to sign employee token: %w", err) // Wrap internal error
 	}
 	return tokenString, nil
 }
 
 func generateCustomerToken(customerID int, email string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(24 * time.Hour) // Consider making expiration configurable
 	claims := jwt.MapClaims{
 		"user_type":   "customer", // Add user type claim
 		"customer_id": customerID,
@@ -207,12 +219,13 @@ func generateCustomerToken(customerID int, email string) (string, error) {
 		"role":        "customer", // Explicit role for consistency
 		"exp":         expirationTime.Unix(),
 		"iss":         "car-rental-api", // Example issuer
+		"iat":         time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(config.JwtSecret)) // Use the same secret for now
+	tokenString, err := token.SignedString([]byte(config.JwtSecret))
 	if err != nil {
 		log.Println("❌ Error signing customer token:", err)
-		return "", err
+		return "", fmt.Errorf("failed to sign customer token: %w", err) // Wrap internal error
 	}
 	return tokenString, nil
 }
