@@ -3,7 +3,7 @@ package main
 import (
 	// --- ตรวจสอบและแก้ไข Import ให้ถูกต้อง ---
 	"car-rental-management/internal/config"
-	"car-rental-management/internal/router" // <--- ต้องเป็นอันนี้
+	"car-rental-management/internal/router" // <--- แก้ไขตรงนี้: ลบชื่อเล่น "handlers" ออก
 
 	// --- -------------------------------- ---
 	"log"
@@ -19,7 +19,7 @@ func main() {
 	log.Println("Database connection established.")
 
 	// --- ตรวจสอบการเรียกใช้ ---
-	r := router.SetupRouter() // <--- เรียกใช้ package router
+	r := router.SetupRouter() // <--- เรียกใช้ package router โดยตรง (ถูกต้องแล้ว)
 	// --- -------------------- ---
 	log.Println("HTTP router initialized.")
 

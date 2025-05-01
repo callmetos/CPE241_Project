@@ -1,22 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom'; // Import Link
 
-// Assuming basic styling here, move to CSS for better management
 const cardStyle = {
     width: '30%',
-    minWidth: '250px', // Ensure readability on smaller screens
+    minWidth: '250px', 
     textAlign: 'center',
     padding: '20px',
     backgroundColor: '#fff',
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
     borderRadius: '8px',
-    margin: '10px' // Add some margin
+    margin: '10px' 
 };
 
 const imgStyle = {
     width: '100%',
-    height: '150px', // Fixed height for consistency
-    objectFit: 'cover', // Ensure image covers the area nicely
+    height: '150px',
+    objectFit: 'cover', 
     borderRadius: '8px',
     marginBottom: '15px'
 };

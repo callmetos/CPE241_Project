@@ -1,0 +1,28 @@
+/* AdminDashboard.css - Minimal styles for Dashboard */
+
+.dashboard-grid {
+    display: grid;
+    /* Responsive grid: 1 column on small, 2 on medium, 3 on large */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px; /* Spacing between cards */
+  }
+  
+  .dashboard-card {
+    /* Inherit .admin-card styles from AdminCommon.css */
+    text-align: center; /* Center content in dashboard cards */
+  }
+  
+  .dashboard-card h3 {
+    margin-bottom: 10px;
+    color: var(--admin-text-medium);
+    font-size: 1rem; /* Smaller title */
+    font-weight: 500;
+  }
+  
+  .dashboard-card p {
+    font-size: 1.75rem; /* Larger value text */
+    font-weight: 500; /* Medium weight value */
+    color: var(--admin-text-dark);
+    margin: 0;
+  }
+  

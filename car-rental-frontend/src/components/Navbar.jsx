@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import navlogo from '../assets/navlogo.png'; // Make sure path is correct
+import navlogo from '../assets/navlogo.png';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -23,9 +23,7 @@ const Navbar = () => {
         </div>
         <ul className="nav-links">
           <li><Link to="/">Shop service</Link></li>
-           {/* Show links based on auth status */}
-           {/* {!loading && isAuthenticated && <li><Link to="/rental/short-term">Rent a Car</Link></li>} */}
-          <li><Link to="#">Promotions</Link></li>
+          <li><Link to="/promotions">Promotions</Link></li>
           <li><Link to="#">Recommend</Link></li>
           <li><Link to="#">Contact</Link></li>
         </ul>
