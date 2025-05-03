@@ -8,7 +8,7 @@ import ErrorMessage from '../components/ErrorMessage.jsx';
 
 // --- Placeholder Data ---
 const BANK_ACCOUNT = {
-    name: "บริษัท จันทนัทธ์ เร้นท์ เอ คาร์ จำกัด",
+    name: "Channathat Ueanapaphon",
     number: "123-4-56789-0",
     bank: "ธนาคารไทยพาณิชย์ (SCB)",
 };
