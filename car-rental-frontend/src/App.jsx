@@ -27,7 +27,7 @@ import RentalManagement from './pages/admin/RentalManagement.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import SlipVerification from './pages/admin/SlipVerification.jsx';
 
-
+import Thankyou from './pages/Thankyou.jsx'; // Import the Thankyou component
 import Reports from './pages/admin/Reports.jsx';
 
 
@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
 const DefaultLayout = ({ children }) => (
   <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
     <Navbar />
-    <main style={{ flex: '1', paddingTop: '70px', paddingBottom: '20px', paddingLeft: '20px', paddingRight: '20px' }}>
+    <main>
       {children}
     </main>
     <Footer />
@@ -62,6 +62,7 @@ function App() {
             <Route path="/signup" element={<DefaultLayout><SignUp /></DefaultLayout>} />
             <Route path="/login" element={<DefaultLayout><Login /></DefaultLayout>} />
             <Route path="/logout" element={<Logout />} />
+            <Route path="/thankyou" element={<DefaultLayout><Thankyou /></DefaultLayout>} />
             <Route path="/promotions" element={<DefaultLayout><div>Promotions Placeholder</div></DefaultLayout>} />
 
 

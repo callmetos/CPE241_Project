@@ -1,0 +1,56 @@
+.presented-container {
+    background-color: #a8b8c3;
+    padding: 40px;
+    text-align: center;
+    min-height: 100vh;
+  }
+  
+  .title {
+    font-size: 5rem;
+    font-weight: bolder;
+    margin-bottom: 40px;
+    font-family: Lucida Handwriting, cursive;
+    text-shadow: 2px 4px 4px white;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    justify-items: center;
+  }
+  
+  .card {
+    background-color: rgb(255, 255, 255);
+    border-radius: 12px;
+    padding: 16px;
+    width: 380px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  
+  .image {
+    width: 350px;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+  
+  
+  .name {
+    font-weight: bold;
+    margin-top: 10px;
+    font-family: Segoe Script;
+    font-size: 1.25rem;
+  }
+  
+  .id {
+    color: #333;
+    font-size: 1rem;
+    font-weight: bolder;
+    font-family: Segoe Script;
+  }
+  
