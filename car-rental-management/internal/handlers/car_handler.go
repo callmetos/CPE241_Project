@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AddCar handles adding a new car
 func AddCar(c *gin.Context) {
 	var car models.Car
 	if err := c.ShouldBindJSON(&car); err != nil {
@@ -20,13 +19,9 @@ func AddCar(c *gin.Context) {
 		return
 	}
 
-	// Default availability might be better handled in DB or service if needed
-	// car.Availability = true
-
 	createdCar, err := services.AddCar(car)
 	if err != nil {
-		log.Println("❌ Error adding car:", err)
-		// Handle specific errors like "branch not found" from service validation
+		log.Println("Error adding car:", err)
 		if strings.Contains(err.Error(), "branch with ID") && strings.Contains(err.Error(), "does not exist") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		} else if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "empty") || strings.Contains(err.Error(), "greater than zero") {
@@ -39,10 +34,26 @@ func AddCar(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdCar)
 }
 
-// GetCars handles listing cars (potentially filtered)
 func GetCars(c *gin.Context) {
-	// Example of reading filters from query parameters
-	var filters services.CarFilters
+	var filters services.CarFiltersWithPagination
+
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+	page, errPage := strconv.Atoi(pageStr)
+	limit, errLimit := strconv.Atoi(limitStr)
+
+	if errPage != nil || page <= 0 {
+		page = 1
+	}
+	if errLimit != nil || limit <= 0 {
+		limit = 10
+	}
+	filters.Page = page
+	filters.Limit = limit
+
+	filters.SortBy = c.DefaultQuery("sort_by", "id")
+	filters.SortDirection = c.DefaultQuery("sort_dir", "ASC")
+
 	if brand := c.Query("brand"); brand != "" {
 		filters.Brand = &brand
 	}
@@ -50,9 +61,9 @@ func GetCars(c *gin.Context) {
 		filters.Model = &model
 	}
 	if branchIDStr := c.Query("branch_id"); branchIDStr != "" {
-		if branchID, err := strconv.Atoi(branchIDStr); err == nil {
+		if branchID, err := strconv.Atoi(branchIDStr); err == nil && branchID > 0 {
 			filters.BranchID = &branchID
-		} else {
+		} else if branchIDStr != "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid branch_id filter"})
 			return
 		}
@@ -82,20 +93,19 @@ func GetCars(c *gin.Context) {
 		}
 	}
 
-	cars, err := services.GetCars(filters) // Use service that accepts filters
+	paginatedResponse, err := services.GetCarsPaginated(filters)
 	if err != nil {
-		log.Println("❌ Error fetching cars:", err)
+		log.Println("Error fetching cars (paginated):", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cars"})
 		return
 	}
-	c.JSON(http.StatusOK, cars)
+	c.JSON(http.StatusOK, paginatedResponse)
 }
 
-// GetCarByID handles fetching a single car
 func GetCarByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid car ID"})
 		return
 	}
@@ -104,7 +114,7 @@ func GetCarByID(c *gin.Context) {
 		if errors.Is(err, errors.New("car not found")) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else {
-			log.Printf("❌ Error fetching car %d: %v", id, err)
+			log.Printf("Error fetching car %d: %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch car"})
 		}
 		return
@@ -112,11 +122,10 @@ func GetCarByID(c *gin.Context) {
 	c.JSON(http.StatusOK, car)
 }
 
-// UpdateCar handles updating car details
 func UpdateCar(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid car ID"})
 		return
 	}
@@ -125,11 +134,11 @@ func UpdateCar(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-	car.ID = id // Set ID from URL
+	car.ID = id
 
 	updatedCar, err := services.UpdateCar(car)
 	if err != nil {
-		log.Println("❌ Error updating car:", err)
+		log.Println("Error updating car:", err)
 		if errors.Is(err, errors.New("car not found for update")) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "branch") || strings.Contains(err.Error(), "empty") || strings.Contains(err.Error(), "greater than zero") {
@@ -142,20 +151,19 @@ func UpdateCar(c *gin.Context) {
 	c.JSON(http.StatusOK, updatedCar)
 }
 
-// DeleteCar handles deleting a car
 func DeleteCar(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid car ID"})
 		return
 	}
 	err = services.DeleteCar(id)
 	if err != nil {
-		log.Println("❌ Error deleting car:", err)
+		log.Println("Error deleting car:", err)
 		if errors.Is(err, errors.New("car not found for deletion")) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		} else if strings.Contains(err.Error(), "cannot delete car") { // FK error from service
+		} else if strings.Contains(err.Error(), "cannot delete car") {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete car"})

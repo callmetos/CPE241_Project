@@ -13,7 +13,6 @@ const AdminNavbar = () => {
   const handleLogout = () => {
     logout();
     navigate('/admin/login', { replace: true });
-    console.log('Admin logged out.');
   };
 
   const navStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a2b4f', padding: '10px 25px', color: 'white', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)', position: 'sticky', top: 0, zIndex: 1000 };
@@ -51,6 +50,9 @@ const AdminNavbar = () => {
           <li style={navItemStyle}>
             <Link to="/admin/rentals" style={getLinkStyle('rent')} onMouseEnter={() => setHoveredLink('rent')} onMouseLeave={() => setHoveredLink(null)}>Rentals</Link>
           </li>
+           <li style={navItemStyle}>
+            <Link to="/admin/reviews" style={getLinkStyle('reviews')} onMouseEnter={() => setHoveredLink('reviews')} onMouseLeave={() => setHoveredLink(null)}>Reviews</Link>
+          </li>
           <li style={navItemStyle}>
             <Link to="/admin/verify-slips" style={getLinkStyle('verify')} onMouseEnter={() => setHoveredLink('verify')} onMouseLeave={() => setHoveredLink(null)}>Verify Slips</Link>
           </li>
@@ -59,6 +61,9 @@ const AdminNavbar = () => {
                 <Link to="/admin/users" style={getLinkStyle('users')} onMouseEnter={() => setHoveredLink('users')} onMouseLeave={() => setHoveredLink(null)}>Users</Link>
             </li>
           )}
+           <li style={navItemStyle}>
+            <Link to="/admin/reports" style={getLinkStyle('reports')} onMouseEnter={() => setHoveredLink('reports')} onMouseLeave={() => setHoveredLink(null)}>Reports</Link>
+          </li>
         </ul>
       </div>
 

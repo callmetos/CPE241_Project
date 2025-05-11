@@ -1,22 +1,19 @@
-// src/pages/CarRental.jsx
 import React, { useState, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// *** แก้ไข: เพิ่ม useMutation และ initiateRentalBooking ***
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAvailableCars, initiateRentalBooking } from '../services/apiService.js'; // *** แก้ไข: เพิ่ม initiateRentalBooking ***
+import { fetchAvailableCars, initiateRentalBooking } from '../services/apiService.js';
 import { AuthContext } from '../context/AuthContext.jsx';
 
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import ErrorMessage from '../components/ErrorMessage.jsx';
 import SearchForm from '../components/SearchForm.jsx';
-// import '../components/admin/AdminCommon.css'; // ไม่น่าจะใช้ในหน้านี้
+import CarReviews from '../components/CarReviews.jsx';
 
-// Default banner/title data (เหมือนเดิม)
 const bannerImages = {
-    'short-term': '/src/assets/banner_short.jpg', // Adjust path as needed
-    'long-term': '/src/assets/banner_long.jpg',   // Adjust path as needed
-    'corporate': '/src/assets/banner_corp.jpg',   // Adjust path as needed
-    'default': '/src/assets/banner_default.jpg' // Adjust path as needed
+    'short-term': '/src/assets/banner_short.jpg',
+    'long-term': '/src/assets/banner_long.jpg',
+    'corporate': '/src/assets/banner_corp.jpg',
+    'default': '/src/assets/banner_default.jpg'
 };
 const pageTitles = {
     'short-term': 'Short-Term Car Rental',
@@ -28,86 +25,81 @@ const pageTitles = {
 const CarRental = () => {
   const { rentalType = 'default' } = useParams();
   const { isAuthenticated } = useContext(AuthContext);
-  const queryClient = useQueryClient(); // *** เพิ่ม QueryClient ***
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const [searchCriteria, setSearchCriteria] = useState({ pickupDate: '', returnDate: '', pickupLocation: '', returnLocation: '' });
-  const [selectedCarId, setSelectedCarId] = useState(null); // *** เพิ่ม State สำหรับติดตามรถที่กำลังจอง ***
-  const [initiationError, setInitiationError] = useState(''); // *** เพิ่ม State สำหรับ Error จาก initiateRentalBooking ***
+  const [selectedCarIdForBooking, setSelectedCarIdForBooking] = useState(null);
+  const [initiationError, setInitiationError] = useState('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [carsPerPage, setCarsPerPage] = useState(15);
+
+  const [viewingReviewsForCar, setViewingReviewsForCar] = useState(null);
 
   const currentPageTitle = pageTitles[rentalType] || pageTitles['default'];
   const currentBannerImage = bannerImages[rentalType] || bannerImages['default'];
   const searchFormTitle = `Search ${currentPageTitle}`;
 
-  // --- Fetch Available Cars Query (เหมือนเดิม) ---
   const {
-    data: cars = [],
+    data: carsDataResponse, // เปลี่ยนชื่อเป็น carsDataResponse เพื่อความชัดเจน
     isLoading: isLoadingCars,
     isError: isErrorCars,
     error: errorCars,
   } = useQuery({
-    queryKey: ['availableCars', rentalType, searchCriteria.pickupLocation, searchCriteria.pickupDate, searchCriteria.returnDate],
+    queryKey: ['availableCarsPaginated', rentalType, searchCriteria.pickupLocation, currentPage, carsPerPage],
     queryFn: () => fetchAvailableCars({
-        // ส่ง Criteria ไปให้ Backend กรอง (ถ้า Backend รองรับ)
-        // type: rentalType, // อาจจะไม่ต้องส่ง type ถ้า filter ด้วยอย่างอื่น
-        branch_id: searchCriteria.pickupLocation || undefined, // ส่ง branch_id ถ้าเลือก
-        // ส่งวันที่ไปตรวจสอบ Availability ถ้า Backend รองรับ
-        // pickup_date: searchCriteria.pickupDate,
-        // return_date: searchCriteria.returnDate,
+        branch_id: searchCriteria.pickupLocation || undefined,
+        page: currentPage,
+        limit: carsPerPage,
+        availability: true,
     }),
-    enabled: isAuthenticated, // Query เมื่อ Login แล้วเท่านั้น
-    staleTime: 1000 * 60 * 5,
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 2,
+    keepPreviousData: true,
   });
 
-   // --- เรียงข้อมูล cars ตาม id (เหมือนเดิม) ---
-   const sortedCars = useMemo(() => {
-     return [...cars].sort((a, b) => a.id - b.id);
-   }, [cars]);
+   // แก้ไขตรงนี้: ตรวจสอบให้แน่ใจว่า carsDataResponse.cars เป็น array จริงๆ
+   const carsToDisplay = Array.isArray(carsDataResponse?.cars) ? carsDataResponse.cars : [];
+   const totalCars = Number.isInteger(carsDataResponse?.total_count) ? carsDataResponse.total_count : 0;
+   const totalPages = totalCars > 0 && carsPerPage > 0 ? Math.ceil(totalCars / carsPerPage) : 0;
 
-  // --- *** เพิ่ม Mutation สำหรับ Initiate Booking *** ---
+
   const { mutate: initiateBooking, isPending: isInitiating } = useMutation({
-      mutationFn: initiateRentalBooking, // ใช้ function จาก apiService
+      mutationFn: initiateRentalBooking,
       onSuccess: (newRental) => {
-          console.log('Rental initiation successful:', newRental);
-          setInitiationError(''); // เคลียร์ Error เก่า
+          setInitiationError('');
           if (newRental && newRental.id) {
-              // *** นำทางไปยังหน้า Summary โดยใช้ ID จริง ***
               navigate(`/checkout/${newRental.id}/summary`);
           } else {
-              // กรณี Backend ไม่คืน ID
-              console.error("Rental ID not found in initiation response:", newRental);
               setInitiationError('Failed to get rental details after booking. Please try again.');
           }
       },
       onError: (err) => {
-          console.error('Rental initiation failed:', err);
           setInitiationError(`Could not start booking: ${err.message}`);
       },
       onSettled: () => {
-          setSelectedCarId(null); // รีเซ็ต ID รถที่กำลังจองเมื่อเสร็จสิ้น (สำเร็จหรือล้มเหลว)
+          setSelectedCarIdForBooking(null);
       }
   });
 
 
-  // --- Event Handlers ---
   const handleCarSearch = (criteria) => {
-      console.log("Search criteria updated:", criteria);
-      setInitiationError(''); // เคลียร์ Error เมื่อค้นหาใหม่
-      setSelectedCarId(null);
+      setInitiationError('');
+      setSelectedCarIdForBooking(null);
+      setViewingReviewsForCar(null);
+      setCurrentPage(1);
       setSearchCriteria({
           pickupDate: criteria.pickupDate,
           returnDate: criteria.returnDate,
           pickupLocation: criteria.pickupLocation,
-          returnLocation: criteria.returnLocation || criteria.pickupLocation // ใช้ที่เดียวกับที่รับถ้าไม่ได้เลือก
+          returnLocation: criteria.returnLocation || criteria.pickupLocation
       });
   };
 
-  // *** แก้ไข handleSelectCar ***
   const handleSelectCar = (car) => {
-    setInitiationError(''); // เคลียร์ Error เก่า
+    setInitiationError('');
     const { pickupDate, returnDate, pickupLocation } = searchCriteria;
-
-    // Validate dates and location from search form (เหมือนเดิม)
     if (!pickupDate || !returnDate) {
       alert("Please perform a search with valid pickup and return dates first."); return;
     }
@@ -119,51 +111,72 @@ const CarRental = () => {
      if (returnDateTime <= pickupDateTime) {
         alert("Return date must be after pickup date."); return;
     }
-
-    // --- เรียก initiateBooking Mutation ---
-    setSelectedCarId(car.id); // ตั้ง ID รถที่กำลังจอง เพื่อแสดงสถานะ loading
+    setSelectedCarIdForBooking(car.id);
     initiateBooking({
         car_id: car.id,
-        pickup_datetime: pickupDate, // ส่งค่าจาก State ไป
+        pickup_datetime: pickupDate,
         dropoff_datetime: returnDate,
-        pickup_location: pickupLocation // Backend อาจใช้ Branch Address แทนถ้าตรงนี้เป็น null
+        pickup_location: pickupLocation
     });
   };
 
-  // --- Styles (เหมือนเดิม หรือปรับแก้ตามต้องการ) ---
+  const handleViewReviews = (car) => {
+    setViewingReviewsForCar({id: car.id, brand: car.brand, model: car.model });
+  };
+  const handleCloseReviews = () => {
+    setViewingReviewsForCar(null);
+  };
+
+  const paginate = (pageNumber) => {
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+        setCurrentPage(pageNumber);
+        window.scrollTo(0, 0);
+    }
+  };
+
   const pageContainerStyle = { padding: '0 20px 20px 20px', maxWidth: '1400px', margin: '0 auto' };
   const bannerStyle = { width: '100%', height: 'auto', maxHeight: '250px', objectFit: 'cover', marginBottom: '30px', borderRadius: '8px' };
   const carListStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '25px', marginTop: '30px' };
   const carItemStyle = { border: '1px solid #e0e0e0', borderRadius: '8px', padding: '15px', backgroundColor: '#fff', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' };
-  const carInfoStyle = { flexGrow: 1, marginBottom: '15px' };
+  const carInfoStyle = { flexGrow: 1, marginBottom: '10px' };
   const imageContainerStyle = { width: '100%', height: '180px', backgroundColor: '#f0f0f0', borderRadius: '6px', marginBottom: '15px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' };
   const imgStyle = { display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' };
+  const carActionsStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' };
 
-  // ปรับ Style ปุ่มให้แสดงสถานะ Loading
    const selectButtonStyle = (car, isCurrentlyInitiating) => ({
-    padding: '10px 15px',
+    padding: '8px 12px',
     border: 'none',
     borderRadius: '4px',
     cursor: (!car.availability || isCurrentlyInitiating) ? 'not-allowed' : 'pointer',
-    backgroundColor: isCurrentlyInitiating ? '#ccc' : (car.availability ? '#007bff' : '#6c757d'), // Grey if initiating or unavailable
+    backgroundColor: isCurrentlyInitiating ? '#ccc' : (car.availability ? '#007bff' : '#6c757d'),
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '500',
+    fontSize: '0.9em',
     transition: 'background-color 0.2s',
     opacity: (!car.availability || isCurrentlyInitiating) ? 0.7 : 1,
-    marginTop: 'auto', // Push button to bottom
-    ':hover': { // Pseudo-class requires CSS or library like styled-components
-      backgroundColor: (!car.availability || isCurrentlyInitiating) ? '#ccc' : '#0056b3',
-    }
    });
+   const viewReviewsButtonStyle = {
+    padding: '8px 12px',
+    border: '1px solid #007bff',
+    backgroundColor: 'transparent',
+    color: '#007bff',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '0.9em',
+    fontWeight: '500',
+    transition: 'background-color 0.2s, color 0.2s',
+   };
 
+
+   const paginationContainerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px', paddingTop: '15px', borderTop: '1px solid #eee' };
+   const paginationButtonStyle = (isActive) => ({ margin: '0 5px', padding: '8px 12px', cursor: 'pointer', backgroundColor: isActive ? '#007bff' : '#f0f0f0', color: isActive ? 'white' : '#333', border: `1px solid ${isActive ? '#007bff' : '#ccc'}`, borderRadius: '4px', fontWeight: isActive ? 'bold' : 'normal', });
+   const paginationNavButtonStyle = { ...paginationButtonStyle(false), backgroundColor: '#e9ecef' }
 
   return (
     <div style={pageContainerStyle}>
       <h1 style={{ textAlign: 'center', marginBottom: '20px', color: '#333' }}>{currentPageTitle}</h1>
       <img src={currentBannerImage} alt={`${currentPageTitle} Banner`} style={bannerStyle} />
       <SearchForm onSearch={handleCarSearch} title={searchFormTitle} />
-
-      {/* --- *** แสดง Error จาก initiateBooking *** --- */}
       <ErrorMessage message={initiationError} />
 
       <h2 style={{ textAlign: 'center', margin: '40px 0 20px 0', color: '#444' }}>Select Your Car</h2>
@@ -171,42 +184,76 @@ const CarRental = () => {
       <ErrorMessage message={isErrorCars ? `Error loading cars: ${errorCars?.message}` : null} />
 
       {!isLoadingCars && !isErrorCars && (
-        <div style={carListStyle}>
-          {sortedCars.length === 0 && <p style={{ textAlign: 'center', gridColumn: '1 / -1' }}>No cars available matching the criteria for {currentPageTitle}.</p>}
+        <>
+          <div style={carListStyle}>
+            {carsToDisplay.length === 0 && <p style={{ textAlign: 'center', gridColumn: '1 / -1' }}>No cars available matching the criteria for {currentPageTitle}.</p>}
+            {carsToDisplay.map((car) => {
+              const isCurrentlyInitiatingThisCar = isInitiating && selectedCarIdForBooking === car.id;
+              return (
+                <div key={car.id} style={carItemStyle}>
+                  <div style={imageContainerStyle}>
+                    <img
+                      src={car.image_url || `https://placehold.co/300x180/f0f0f0/ccc?text=Car+Image`}
+                      alt={`${car.brand} ${car.model}`}
+                      style={imgStyle}
+                      loading="lazy"
+                      onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/300x180/f8d7da/721c24?text=Image+Error'; }}
+                    />
+                  </div>
+                  <div style={carInfoStyle}>
+                    <h4 style={{ marginBottom: '8px', color: '#333' }}>{car.brand} {car.model}</h4>
+                    <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '5px' }}>Price: ฿{car.price_per_day?.toFixed(2)} / day</p>
+                    {!car.availability && <p style={{color: 'red', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px'}}>Currently Unavailable</p>}
+                  </div>
+                  <div style={carActionsStyle}>
+                    <button
+                        onClick={() => handleViewReviews(car)}
+                        style={viewReviewsButtonStyle}
+                        onMouseOver={(e) => { e.target.style.backgroundColor = '#007bff'; e.target.style.color = 'white';}}
+                        onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#007bff';}}
+                    >
+                        View Reviews
+                    </button>
+                    <button
+                      onClick={() => handleSelectCar(car)}
+                      disabled={!car.availability || !searchCriteria.pickupDate || !searchCriteria.returnDate || !searchCriteria.pickupLocation || isInitiating}
+                      style={selectButtonStyle(car, isCurrentlyInitiatingThisCar)}
+                    >
+                      {isCurrentlyInitiatingThisCar ? 'Processing...' : 'Select Car'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-          {sortedCars.map((car) => {
-            // *** ตรวจสอบว่ารถคันนี้กำลังอยู่ใน process การ initiate หรือไม่ ***
-            const isCurrentlyInitiatingThisCar = isInitiating && selectedCarId === car.id;
-            return (
-              <div key={car.id} style={carItemStyle}>
-                <div style={imageContainerStyle}>
-                  <img
-                    src={car.image_url || `https://placehold.co/300x180/f0f0f0/ccc?text=Car+Image`}
-                    alt={`${car.brand} ${car.model}`}
-                    style={imgStyle}
-                    loading="lazy"
-                    onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/300x180/f8d7da/721c24?text=Image+Error'; }}
-                  />
-                </div>
-                <div style={carInfoStyle}>
-                  <h4 style={{ marginBottom: '8px', color: '#333' }}>{car.brand} {car.model}</h4>
-                  <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '5px' }}>Price: ฿{car.price_per_day?.toFixed(2)} / day</p>
-                   {!car.availability && <p style={{color: 'red', fontSize: '0.9em', fontWeight: 'bold', marginTop: '8px'}}>Currently Unavailable</p>}
-                </div>
-                <button
-                  onClick={() => handleSelectCar(car)}
-                  // ปรับเงื่อนไข disable ใหม่
-                  disabled={!car.availability || !searchCriteria.pickupDate || !searchCriteria.returnDate || !searchCriteria.pickupLocation || isInitiating}
-                  // *** ส่งค่า isCurrentlyInitiatingThisCar ไปให้ Style ***
-                  style={selectButtonStyle(car, isCurrentlyInitiatingThisCar)}
-                >
-                  {/* *** เปลี่ยนข้อความปุ่มตามสถานะ *** */}
-                  {isCurrentlyInitiatingThisCar ? 'Processing...' : 'Select this Car'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+          {totalPages > 0 && ( // Show pagination only if there are pages
+            <div style={paginationContainerStyle}>
+                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} style={paginationNavButtonStyle}>&laquo; Previous</button>
+                {Array.from({ length: totalPages }, (_, i) => {
+                    const pageNumber = i + 1;
+                    const pageRange = 2;
+                    const showPage = pageNumber === 1 || pageNumber === totalPages || (pageNumber >= currentPage - pageRange && pageNumber <= currentPage + pageRange);
+                    if (showPage) { return (<button key={pageNumber} onClick={() => paginate(pageNumber)} style={paginationButtonStyle(currentPage === pageNumber)}>{pageNumber}</button>); }
+                    else if (pageNumber === currentPage - pageRange - 1 || pageNumber === currentPage + pageRange + 1) {
+                        if ((pageNumber === 2 && currentPage > 4 && totalPages > 5) || (pageNumber === totalPages - 1 && currentPage < totalPages - 3 && totalPages > 5)) {
+                            return <span key={`ellipsis-${pageNumber}`} style={{ margin: '0 5px' }}>...</span>;
+                        }
+                    }
+                    return null;
+                })}
+                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} style={paginationNavButtonStyle}>Next &raquo;</button>
+            </div>
+          )}
+        </>
+      )}
+      {viewingReviewsForCar && (
+        <CarReviews
+            carId={viewingReviewsForCar.id}
+            carBrand={viewingReviewsForCar.brand}
+            carModel={viewingReviewsForCar.model}
+            onClose={handleCloseReviews}
+        />
       )}
     </div>
   );

@@ -35,10 +35,10 @@ const Footer = () => {
                     <p style={{ marginLeft: '10px' }}>Contact us: info@channathatrentacar.com</p>
                 </div>
                 <div className="social-links">
-            <a href="#" style={linkStyle}><img src={fbicon}/></a>
-            <a href="#" style={linkStyle}><img src={igicon}/></a>
-            <a href="#" style={linkStyle}><img src={yticon}/></a>
-            <a href="#" style={linkStyle}><img src={tkicon}/></a>
+            <a href="https://www.facebook.com/cpe.kmutt" style={linkStyle}><img src={fbicon}/></a>
+            <a href="https://www.instagram.com/cpe_studentunion" style={linkStyle}><img src={igicon}/></a>
+            <a href="https://www.youtube.com/@CPE-KMUTT" style={linkStyle}><img src={yticon}/></a>
+            <a href="https://www.tiktok.com/@comcamp.kmutt" style={linkStyle}><img src={tkicon}/></a>
             </div>
             </div>
         </footer>

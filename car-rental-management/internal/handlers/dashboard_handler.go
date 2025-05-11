@@ -10,18 +10,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetDashboard สำหรับ Admin Dashboard (ยังคงเดิม)
 func GetDashboard(c *gin.Context) {
 	data, err := services.GetDashboardData()
 	if err != nil {
-		log.Println("❌ Error fetching dashboard data:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch dashboard data"})
+		log.Println("❌ Error fetching admin dashboard data:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch admin dashboard data"})
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
+// GetPublicStats สำหรับหน้า Home
+func GetPublicStats(c *gin.Context) {
+	data, err := services.GetPublicStatsData()
+	if err != nil {
+		log.Println("❌ Error fetching public stats data:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch public stats data"})
 		return
 	}
 	c.JSON(http.StatusOK, data)
 }
 
 func HandleGetRevenueReport(c *gin.Context) {
-
 	startDateStr := c.DefaultQuery("start_date", time.Now().AddDate(0, 0, -7).Format("2006-01-02"))
 	endDateStr := c.DefaultQuery("end_date", time.Now().Format("2006-01-02"))
 
