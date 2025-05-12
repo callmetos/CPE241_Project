@@ -26,9 +26,10 @@ import CustomerManagement from './pages/admin/CustomerManagement.jsx';
 import RentalManagement from './pages/admin/RentalManagement.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import SlipVerification from './pages/admin/SlipVerification.jsx';
-import ReviewManagement from './pages/admin/ReviewManagement.jsx'; // Import หน้าใหม่
+import ReviewManagement from './pages/admin/ReviewManagement.jsx';
 import Thankyou from './pages/Thankyou.jsx';
 import Reports from './pages/admin/Reports.jsx';
+import ContactPage from './pages/ContactPage.jsx'; // <<< IMPORT หน้า Contact
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +44,7 @@ const queryClient = new QueryClient({
 const DefaultLayout = ({ children }) => (
   <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
     <Navbar />
-    <main style={{ flex: 1 }}> {/* Ensure main content takes available space */}
+    <main style={{ flex: 1 }}>
       {children}
     </main>
     <Footer />
@@ -62,6 +63,7 @@ function App() {
             <Route path="/logout" element={<Logout />} />
             <Route path="/thankyou" element={<DefaultLayout><Thankyou /></DefaultLayout>} />
             <Route path="/promotions" element={<DefaultLayout><div>Promotions Placeholder</div></DefaultLayout>} />
+            <Route path="/contact" element={<DefaultLayout><ContactPage /></DefaultLayout>} /> {/* <<< ADDED CONTACT ROUTE */}
 
             <Route path="/rental/:rentalType" element={<PrivateRoute><DefaultLayout><CarRental /></DefaultLayout></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><DefaultLayout><Profile /></DefaultLayout></PrivateRoute>} />
@@ -86,7 +88,7 @@ function App() {
               <Route path="cars" element={<CarManagement />} />
               <Route path="customers" element={<CustomerManagement />} />
               <Route path="rentals" element={<RentalManagement />} />
-              <Route path="reviews" element={<ReviewManagement />} /> {/* เพิ่ม Route สำหรับ Review Management */}
+              <Route path="reviews" element={<ReviewManagement />} />
               <Route path="verify-slips" element={<SlipVerification />} />
               <Route path="reports" element={<Reports />} />
               <Route

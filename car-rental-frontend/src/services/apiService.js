@@ -56,6 +56,10 @@ export const fetchUserProfile = async () => {
   const { data } = await apiClient.get('/me/profile');
   return data;
 };
+export const updateUserProfile = async (profileData) => {
+    const { data } = await apiClient.put('/me/profile', profileData);
+    return data;
+};
 export const fetchAvailableCars = async (params = {}) => {
     const validParams = { availability: true, ...params };
     Object.keys(validParams).forEach(key => (validParams[key] == null || validParams[key] === '') && delete validParams[key]);
